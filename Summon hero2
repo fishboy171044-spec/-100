@@ -1,0 +1,132 @@
+local Translations = {
+    ["Farm"] = "挂机功能",
+    ["Summon"] = "召唤",
+    ["Misc"] = "其他",
+    ["Settings"] = "设置",
+    ["Auto Join"] = "自动加入",
+    ["Mode"] = "模式",
+    ["Dungeon"] = "地下城",
+    ["Stage"] = "章节",
+    ["Dungeon Stage•一"] = "地下城章节•1",
+    ["Enable Auto Join"] = "开始自动加入",
+    ["In-Match Automation"] = "游戏中的自动功能",
+    ["End-of-Round Action"] = "结束后自动",
+    ["Retry"] = "重新开始",
+    ["Lobby"] = "返回大厅",
+    ["Auto Vote End-of-Round"] = "结束后自动选择",
+    ["Auto Open Bonus Chests"] = "自动开宝箱",
+    ["Multi-Stage Farm"] = "多阶段挂机",
+    ["Auto Summon"] = "自动召唤",
+    ["Pack•Pack1"] = "包A",
+    ["Pack1"] = "包A",
+    ["Pack•Pack2"] = "包B",
+    ["Pack2"] = "包B",
+    ["Enable Auto Summon"] = "开始自动召唤",
+    ["Auto Claim Quests"] = "自动领任务奖励",
+    ["Claim All Quest Now"] = "立即领取所有任务奖励",
+    ["Auto Execute on Teleport"] = "传送后自动执行脚本",
+    ["Player lnfo"] = "玩家信息",
+    ["UI Settings"] = "脚本界面设置",
+    ["UI Size"] = "脚本界面大小",
+}
+
+local function translateText(text)
+    if not text or type(text) ~= "string" then return text end
+    if Translations[text] then return Translations[text] end
+    for en, cn in pairs(Translations) do
+        if text:find(en) then return text:gsub(en, cn) end
+    end
+    return text
+end
+
+local translatedElements = {}
+local originalTexts = {}
+
+local function safeTranslateElement(element)
+    if translatedElements[element] then return end
+    
+    pcall(function()
+        if element:IsA("TextLabel") or element:IsA("TextButton") or element:IsA("TextBox") then
+            local currentText = element.Text
+            if currentText and currentText ~= "" then
+                if not originalTexts[element] then
+                    originalTexts[element] = currentText
+                end
+                
+                local translatedText = translateText(currentText)
+                if translatedText ~= currentText then
+                    element.Text = translatedText
+                    translatedElements[element] = true
+                end
+            end
+        end
+    end)
+end
+
+local function setupSmartListener()
+    local function onTextPropertyChanged(element)
+        if translatedElements[element] then
+            local currentText = element.Text
+            local originalText = originalTexts[element]
+            
+            if currentText == originalText or translateText(currentText) == currentText then
+                translatedElements[element] = nil
+                return
+            end
+            
+            local translatedText = translateText(currentText)
+            if translatedText ~= currentText then
+                element.Text = translatedText
+            end
+        else
+            safeTranslateElement(element)
+        end
+    end
+
+    local function addSmartListener(parent)
+        parent.DescendantAdded:Connect(function(descendant)
+            task.wait(0.3)  -- 新元素翻译延迟（改小可加快响应）
+            safeTranslateElement(descendant)
+            
+            if descendant:IsA("TextLabel") or descendant:IsA("TextButton") or descendant:IsA("TextBox") then
+                descendant:GetPropertyChangedSignal("Text"):Connect(function()
+                    task.wait(0.1)  -- 文本变化翻译延迟（改小可加快响应）
+                    onTextPropertyChanged(descendant)
+                end)
+            end
+        end)
+    end
+    
+    pcall(addSmartListener, game:GetService("CoreGui"))
+    local player = game:GetService("Players").LocalPlayer
+    if player and player:FindFirstChild("PlayerGui") then
+        pcall(addSmartListener, player.PlayerGui)
+    end
+end
+
+local function delayedInitialTranslate()
+    task.wait(5)
+    
+    for _, gui in ipairs(game:GetService("CoreGui"):GetDescendants()) do
+        safeTranslateElement(gui)
+    end
+    
+    local player = game:GetService("Players").LocalPlayer
+    if player and player:FindFirstChild("PlayerGui") then
+        for _, gui in ipairs(player.PlayerGui:GetDescendants()) do
+            safeTranslateElement(gui)
+        end
+    end
+end
+
+task.wait(2)
+setupSmartListener()
+delayedInitialTranslate()
+
+local success, err = pcall(function()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/ApelsinkaFr/ApelHub/refs/heads/main/ApelHub"))()
+end)
+
+if not success then
+    warn("加载失败:", err)
+end

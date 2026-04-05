@@ -1,0 +1,152 @@
+local Translations = {
+    ["Execute Main Script"] = "执行脚本主要功能",
+    ["Execute Fast Farming"] = "执行快速挂机功能（如刷重生，练力量等）",
+    ["Choose your script to exectue"] = "选择你的脚本执行",
+    ["Main"] = "主要功能",
+    ["User Settings"] = "玩家设置",
+    ["Size"] = "体型",
+    ["Set Size"] = "设置提醒",
+    ["Speed"] = "速度",
+    ["Set Speed"] = "设置速度",
+    ["FOV"] = "视野",
+    ["Set FOV"] = "设置视野",
+    ["Protection and Visuals"] = "保护与视觉效果",
+    ["Anti Fling"] = "反击飞",
+    ["Lock Position"] = "锁定位置",
+    ["Show Pets"] = "显示宠物",
+    ["Show Other Pets"] = "",
+    ["Hide Stat Frames"] = "隐藏业报显示",
+    ["Walk on Water"] = "水上行走",
+    ["Other"] = "其他功能",
+    ["lnfinite Jump"] = "无限跳跃",
+    ["Automatically Spin Fortune Wheel"] = "自动旋转幸运轮盘",
+    ["Change Time"] = "变换时间",
+    ["Killing"] = "杀人功能",
+    ["Misc"] = "其他",
+    ["Stat Pet Equip"] = "装备属性宠物",
+    ["Remove Attack Animations"] = "移出攻击动画",
+    ["Disable Eating Egg"] = "禁用吃蛋",
+    ["Auto Kill"] = "自动杀人",
+    ["Add to Whitelist"] = "添加白名单",
+    ["Kill Everyone"] = "杀所有人",
+    ["Whitelist Friends"] = "好友自动加入白名单",
+    ["Karma Killing"] = "选择性杀人",
+    ["Farm Evil Karma"] = "自动刷邪恶业报",
+    ["Farm Good Karma"] = "自动刷善良业报",
+    ["Target Killing"] = "单锁",
+    ["Add to Killlist"] = "添加杀戮名单（可多个添加）",
+    ["Kill List"] = "开始杀戮",
+    ["Choose Player"] = "选择玩家",
+    ["Spectate"] = "观看其他玩家视角",
+    ["Kill Aura"] = "杀戮光环",
+    ["Range(1-140)"] = "光环范围（1-140）",
+    ["Show Ring"] = "显示光环",
+    ["Lend Damage"] = "借用上害",
+    ["Choose Player"] = "选择玩家",
+    ["Lend Damage"] = "借用伤害",
+    ["Whitelist"] = "白名单",
+    ["Clear Whitelist"] = "清除白名单",
+    ["Killlist"] = "杀戮名单",
+    ["Clear Killlist"] = "清除杀戮名单",
+}
+
+local function translateText(text)
+    if not text or type(text) ~= "string" then return text end
+    if Translations[text] then return Translations[text] end
+    for en, cn in pairs(Translations) do
+        if text:find(en) then return text:gsub(en, cn) end
+    end
+    return text
+end
+
+local translatedElements = {}
+local originalTexts = {}
+
+local function safeTranslateElement(element)
+    if translatedElements[element] then return end
+    
+    pcall(function()
+        if element:IsA("TextLabel") or element:IsA("TextButton") or element:IsA("TextBox") then
+            local currentText = element.Text
+            if currentText and currentText ~= "" then
+                if not originalTexts[element] then
+                    originalTexts[element] = currentText
+                end
+                
+                local translatedText = translateText(currentText)
+                if translatedText ~= currentText then
+                    element.Text = translatedText
+                    translatedElements[element] = true
+                end
+            end
+        end
+    end)
+end
+
+local function setupSmartListener()
+    local function onTextPropertyChanged(element)
+        if translatedElements[element] then
+            local currentText = element.Text
+            local originalText = originalTexts[element]
+            
+            if currentText == originalText or translateText(currentText) == currentText then
+                translatedElements[element] = nil
+                return
+            end
+            
+            local translatedText = translateText(currentText)
+            if translatedText ~= currentText then
+                element.Text = translatedText
+            end
+        else
+            safeTranslateElement(element)
+        end
+    end
+
+    local function addSmartListener(parent)
+        parent.DescendantAdded:Connect(function(descendant)
+            task.wait(0.3)  -- 新元素翻译延迟（改小可加快响应）
+            safeTranslateElement(descendant)
+            
+            if descendant:IsA("TextLabel") or descendant:IsA("TextButton") or descendant:IsA("TextBox") then
+                descendant:GetPropertyChangedSignal("Text"):Connect(function()
+                    task.wait(0.1)  -- 文本变化翻译延迟（改小可加快响应）
+                    onTextPropertyChanged(descendant)
+                end)
+            end
+        end)
+    end
+    
+    pcall(addSmartListener, game:GetService("CoreGui"))
+    local player = game:GetService("Players").LocalPlayer
+    if player and player:FindFirstChild("PlayerGui") then
+        pcall(addSmartListener, player.PlayerGui)
+    end
+end
+
+local function delayedInitialTranslate()
+    task.wait(5)
+    
+    for _, gui in ipairs(game:GetService("CoreGui"):GetDescendants()) do
+        safeTranslateElement(gui)
+    end
+    
+    local player = game:GetService("Players").LocalPlayer
+    if player and player:FindFirstChild("PlayerGui") then
+        for _, gui in ipairs(player.PlayerGui:GetDescendants()) do
+            safeTranslateElement(gui)
+        end
+    end
+end
+
+task.wait(2)
+setupSmartListener()
+delayedInitialTranslate()
+
+local success, err = pcall(function()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/silencedevs/SilenceScripts/main/Loader/Loader.luau"))()
+end)
+
+if not success then
+    warn("加载失败:", err)
+end

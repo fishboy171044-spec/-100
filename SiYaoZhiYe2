@@ -1,0 +1,176 @@
+local Translations = {
+    ["Home"] = "主页",
+    ["Main"] = "主要",
+    ["Settings"] = "设置",
+    ["Addons"] = "插件（没啥用）",
+    ["Toggle"] = "开/关",
+    ["Lock"] = "锁定",
+    ["Info"] = "信息",
+    ["Acknowledgments"] = "特别致谢",
+    ["Visual Effects"] = "视觉效果",
+    ["Function"] = "功能",
+    ["World"] = "环境效果",
+    ["ESP"] = "透视",
+    ["Killer Hp"] = "杀手血量",
+    ["Killer"] = "杀手",
+    ["Survivor"] = "幸存者",
+    ["Door"] = "门",
+    ["Battery"] = "电池",
+    ["Trap"] = "陷阱",
+    ["Fusebox"] = "保险丝盒",
+    ["Field of View"] = "视野",
+    ["Fullbright"] = "夜视",
+    ["No Shadows"] = "没有阴影",
+    ["Player"] = "角色功能",
+    ["Speed hack"] = "加速功能",
+    ["speed size"] = "加速速度",
+    ["Speed Walk"] = "快速行走",
+    ["Stamina"] = "耐力",
+    ["Springtrap Aimbot"] = "弹簧陷阱自瞄",
+    ["Infinite Stamina"] = "无限耐力",
+    ["Stamina Value"] = "耐力值",
+    ["Normal"] = "普通",
+    ["Ghost"] = "隐身",
+    ["Desync"] = "不同步",
+    ["Update Marker"] = "更新制造器",
+    ["Teleport"] = "传送",
+    ["Teleport To"] = "传送到",
+    ["Teleport To Battery"] = "传送到电池",
+    ["Select target mode"] = "选择目标模式",
+    ["Select player to hunt"] = "选择玩家用于伤害",
+    ["Teleport Kill"] = "传送杀人",
+    ["Hitbox"] = "碰撞箱",
+    ["Enlarge"] = "放大",
+    ["Hitbox size"] = "碰撞箱大小",
+    ["Fast Interact"] = "快速互动",
+    ["Generator"] = "生成器",
+    ["Auto Fix Generator"] = "自动修复生成器",
+    ["No Fog"] = "去雾",
+    ["Auto"] = "自动",
+    ["Escape"] = "撤离",
+    ["Wire"] = "钢丝",
+    ["Block"] = "方块",
+    ["Anti"] = "防堵门",
+    ["Destroy Door"] = "摧毁门",
+    ["Destroy DoubleDoor"] = "摧毁双门",
+    ["Tigger Distance"] = "跳跳虎距离",
+    ["Block cooldown"] = "方块冷却",
+    ["Search"] = "搜索",
+    ["FPS"] = "帧数",
+    ["Ping"] = "延迟",
+    ["Game"] = "游戏",
+    ["Version"] = "版本",
+    ["Repair Interval"] = "修复间隔",
+    ["Misc"] = "其他",
+    ["Died"] = "去世",
+    ["Info"] = "信息",
+    ["user"] = "玩家",
+    ["use time"] = "使用脚本的时间",
+    ["country"] = "国家",
+    ["Player Name"] = "玩家名称",
+    ["Exploit"] = "注入器",
+    ["Subject"] = "主题",
+    ["UI Settings"] = "UI设置",
+    ["Self"] = "视角功能",
+}
+
+local function translateText(text)
+    if not text or type(text) ~= "string" then return text end
+    if Translations[text] then return Translations[text] end
+    for en, cn in pairs(Translations) do
+        if text:find(en) then return text:gsub(en, cn) end
+    end
+    return text
+end
+
+local translatedElements = {}
+local originalTexts = {}
+
+local function safeTranslateElement(element)
+    if translatedElements[element] then return end
+    
+    pcall(function()
+        if element:IsA("TextLabel") or element:IsA("TextButton") or element:IsA("TextBox") then
+            local currentText = element.Text
+            if currentText and currentText ~= "" then
+                if not originalTexts[element] then
+                    originalTexts[element] = currentText
+                end
+                
+                local translatedText = translateText(currentText)
+                if translatedText ~= currentText then
+                    element.Text = translatedText
+                    translatedElements[element] = true
+                end
+            end
+        end
+    end)
+end
+
+local function setupSmartListener()
+    local function onTextPropertyChanged(element)
+        if translatedElements[element] then
+            local currentText = element.Text
+            local originalText = originalTexts[element]
+            
+            if currentText == originalText or translateText(currentText) == currentText then
+                translatedElements[element] = nil
+                return
+            end
+            
+            local translatedText = translateText(currentText)
+            if translatedText ~= currentText then
+                element.Text = translatedText
+            end
+        else
+            safeTranslateElement(element)
+        end
+    end
+
+    local function addSmartListener(parent)
+        parent.DescendantAdded:Connect(function(descendant)
+            task.wait(0.3)  -- 新元素翻译延迟（改小可加快响应）
+            safeTranslateElement(descendant)
+            
+            if descendant:IsA("TextLabel") or descendant:IsA("TextButton") or descendant:IsA("TextBox") then
+                descendant:GetPropertyChangedSignal("Text"):Connect(function()
+                    task.wait(0.1)  -- 文本变化翻译延迟（改小可加快响应）
+                    onTextPropertyChanged(descendant)
+                end)
+            end
+        end)
+    end
+    
+    pcall(addSmartListener, game:GetService("CoreGui"))
+    local player = game:GetService("Players").LocalPlayer
+    if player and player:FindFirstChild("PlayerGui") then
+        pcall(addSmartListener, player.PlayerGui)
+    end
+end
+
+local function delayedInitialTranslate()
+    task.wait(5)
+    
+    for _, gui in ipairs(game:GetService("CoreGui"):GetDescendants()) do
+        safeTranslateElement(gui)
+    end
+    
+    local player = game:GetService("Players").LocalPlayer
+    if player and player:FindFirstChild("PlayerGui") then
+        for _, gui in ipairs(player.PlayerGui:GetDescendants()) do
+            safeTranslateElement(gui)
+        end
+    end
+end
+
+task.wait(2)
+setupSmartListener()
+delayedInitialTranslate()
+
+local success, err = pcall(function()
+    loadstring(game:HttpGet("https://github.com/MicLing-7877/Msploit/raw/main/load/Msploit?raw=true"))()
+end)
+
+if not success then
+    warn("加载失败:", err)
+end
